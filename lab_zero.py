@@ -70,7 +70,7 @@ corpus[:100]
 type(words)
 
 
-# In[10]:
+# In[12]:
 
 
 words = list(words)
@@ -88,38 +88,38 @@ words[:10]
 len(words)
 
 
-# In[11]:
+# In[15]:
 
 
 unigram_counter = Counter(list(words))
 
 
-# In[14]:
+# In[16]:
 
 
 unigram_counter.most_common(10)
 
 
-# In[12]:
+# In[17]:
 
 
 top_500 = unigram_counter.most_common(5000)
 
 
-# In[13]:
+# In[18]:
 
 
 W = [x[0] for x in top_500]
 
 
-# In[14]:
+# In[19]:
 
 
 print("Most common: ", W[:5])
 print("Least common: ", W[-5:])
 
 
-# In[15]:
+# In[20]:
 
 
 #Add RG65 words
@@ -141,7 +141,7 @@ rg_data = [('cord', 'smile', 0.02), ('rooster', 'voyage', 0.04), ('noon', 'strin
           ('automobile', 'car', 3.92), ('midday', 'noon', 3.94), ('gem', 'jewel', 3.94)] 
 
 
-# In[16]:
+# In[21]:
 
 
 rg_45_words = []
@@ -149,32 +149,32 @@ for s in rg_data:
     rg_45_words.extend([s[0], s[1]])
 
 
-# In[17]:
+# In[22]:
 
 
 rg_45_words = list(set(rg_45_words))
 
 
-# In[18]:
+# In[23]:
 
 
 print(len(rg_45_words), rg_45_words[:5])
 
 
-# In[19]:
+# In[24]:
 
 
 W.extend(rg_45_words)
 W = list(set(W))
 
 
-# In[20]:
+# In[25]:
 
 
 len(W)
 
 
-# In[21]:
+# In[26]:
 
 
 #dictionary
@@ -185,7 +185,7 @@ for w in W:
     i = i+1
 
 
-# In[22]:
+# In[27]:
 
 
 #bigram counts
@@ -193,43 +193,43 @@ n = 2
 bigrams = ngrams(brown.words(), n)
 
 
-# In[23]:
+# In[28]:
 
 
 brown.words()
 
 
-# In[27]:
+# In[29]:
 
 
 type(bigrams)
 
 
-# In[24]:
+# In[30]:
 
 
 bigrams = list(bigrams)
 
 
-# In[25]:
+# In[31]:
 
 
 bigrams[:5]
 
 
-# In[26]:
+# In[32]:
 
 
 cc_mat = np.zeros((len(W), len(W)))
 
 
-# In[27]:
+# In[33]:
 
 
 cc_mat.shape
 
 
-# In[28]:
+# In[34]:
 
 
 for big in bigrams:
@@ -239,69 +239,25 @@ for big in bigrams:
         pass
 
 
-# In[33]:
+# In[35]:
 
 
 cc_mat[0]
 
 
-# In[29]:
+# In[36]:
 
 
 cc_mat = sparse.csr_matrix(cc_mat)
 
 
-# In[30]:
+# In[37]:
 
 
-cc_mat[0]
+cc_mat
 
 
-# In[31]:
-
-
-row_sum = np.sum(cc_mat, axis=1)
-col_sum = np.sum(cc_mat, axis = 0)
-total_num = np.sum(row_sum)
-
-
-# In[32]:
-
-
-print(total_num)
-
-
-# In[33]:
-
-
-np.sum(cc_mat)
-
-
-# In[34]:
-
-
-denom = np.outer(row_sum, col_sum) / total_num
-
-
-# In[36]:
-
-
-denom.shape
-
-
-# In[ ]:
-
-
-probs = np.true_divide(cc_mat, denom)
-
-
-# In[ ]:
-
-
-
-
-
-# In[36]:
+# In[38]:
 
 
 #ppmi
@@ -312,38 +268,207 @@ def get_ppmi(cc_mat):
     
     denom = np.outer(row_sum, col_sum) / total_num
     
-    assert denom.shape == cc_mat.shape
+    probs = cc_mat / denom
     
-    with np.errstate(divide='ignore', invalid='ignore'):
-        probs = np.true_divide(cc_mat, denom)
-        probs[probs == np.inf] = 0
-        probs = np.nan_to_num(probs)
-        
-        return probs
+    probs = np.nan_to_num(probs)
+    
             
     #probs = np.divide(cc_mat, denom, out=np.zeros_like(cc_mat.shape), where=denom!=float(0))
+    with np.errstate(divide='ignore'):
+        probs = np.log2(probs)
     
+    probs[np.isinf(probs)] = 0.0
+    
+    probs[probs < 0] = 0.0
+    
+    return probs
     
     
     
 
 
-# In[37]:
+# In[39]:
 
 
 cc_mat
 
 
-# In[90]:
+# In[40]:
 
 
-np.zeros_like(cc_mat)
+#np.zeros_like(cc_mat)
 
 
-# In[ ]:
+# In[41]:
 
 
 ppmi_mat = get_ppmi(cc_mat)
+
+
+# In[42]:
+
+
+ppmi_mat.shape
+
+
+# In[44]:
+
+
+np.min(ppmi_mat)
+
+
+# In[46]:
+
+
+np.max(ppmi_mat)
+
+
+# In[48]:
+
+
+from sklearn.decomposition import PCA
+
+
+# In[49]:
+
+
+pca_10 = PCA(n_components = 10)
+pca_100 = PCA(n_components = 100)
+pca_300 = PCA(n_components = 300)
+
+
+# In[50]:
+
+
+pca_10_mat = pca_10.fit_transform(ppmi_mat)
+
+
+# In[52]:
+
+
+pca_100_mat = pca_100.fit_transform(ppmi_mat)
+pca_300_mat = pca_300.fit_transform(ppmi_mat)
+
+
+# In[53]:
+
+
+pca_10_mat.shape, pca_100_mat.shape, pca_300_mat.shape
+
+
+# In[54]:
+
+
+S = []
+S_wordpairs = []
+for pair in rg_data:
+    if (pair[0] in W) and (pair[1] in W):
+        S_wordpairs.append((pair[0], pair[1]))
+        S.append(pair[2])
+
+
+# In[55]:
+
+
+len(S)
+
+
+# In[56]:
+
+
+from sklearn.metrics.pairwise import cosine_similarity
+
+
+# In[59]:
+
+
+np.squeeze(np.asarray(ppmi_mat[0]))
+
+
+# In[60]:
+
+
+pca_100_mat[0]
+
+
+# In[66]:
+
+
+cosine_similarity(ppmi_mat[1],ppmi_mat[2])[0][0]
+
+
+# In[65]:
+
+
+cosine_similarity([pca_10_mat[1]],[pca_10_mat[2]])
+
+
+# In[67]:
+
+
+s_m1 = []
+s_m10 = []
+s_m100 = []
+s_m300 = []
+
+for i, pair in enumerate(S_wordpairs):
+    word_1, word_2 = pair
+    ind_1, ind_2 = W_ind[word_1], W_ind[word_2]
+    
+    #ppmi
+    s_m1.append(cosine_similarity(ppmi_mat[ind_1],ppmi_mat[ind_2])[0][0])
+    
+    s_m10.append(cosine_similarity([pca_10_mat[ind_1]], [pca_10_mat[ind_2]])[0][0])
+    
+    s_m100.append(cosine_similarity([pca_100_mat[ind_1]], [pca_100_mat[ind_2]])[0][0])
+    
+    s_m300.append(cosine_similarity([pca_300_mat[ind_1]], [pca_300_mat[ind_2]])[0][0])
+
+
+# In[68]:
+
+
+len(s_m1), len(s_m10), len(s_m100), len(s_m300)
+
+
+# In[72]:
+
+
+np.sum(s_m300)
+
+
+# In[74]:
+
+
+from scipy.stats import pearsonr
+
+
+# In[75]:
+
+
+pr_m1 = pearsonr(S, s_m1)
+print(pr_m1)
+
+
+# In[76]:
+
+
+pr_m10 = pearsonr(S, s_m10)
+print(pr_m10)
+
+
+# In[77]:
+
+
+pr_m100 = pearsonr(S, s_m100)
+print(pr_m100)
+
+
+# In[78]:
+
+
+pr_m300 = pearsonr(S, s_m300)
+print(pr_m300)
 
 
 # In[ ]:
